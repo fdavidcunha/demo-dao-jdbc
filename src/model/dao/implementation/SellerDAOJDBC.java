@@ -58,18 +58,8 @@ public class SellerDAOJDBC implements SellerDAO{
 			// A primeira posição do result set não contém dados, por isso, utiliza-se o next,
 			// para saber se existe ao menos um registro.
 			if (rs.next()) {
-				Department dep = new Department();
-				dep.setID(rs.getInt("departmentID"));
-				dep.setName(rs.getString("depName"));
-				
-				Seller sel = new Seller();
-				sel.setID(rs.getInt("ID"));
-				sel.setName(rs.getString("name"));
-				sel.setEmail(rs.getString("email"));
-				sel.setBaseSalary(rs.getDouble("baseSalary"));
-				sel.setBirthDate(rs.getDate("birthDate"));
-				sel.setDepartment(dep);
-				
+				Department dep = instantiateDepartment(rs);
+				Seller sel     = instantiateSeller(rs, dep); 
 				return sel;
 			} else {
 				return null;
@@ -82,6 +72,24 @@ public class SellerDAOJDBC implements SellerDAO{
 			DB.closeStatement(st);
 			DB.closeResultSet(rs);
 		}
+	}
+
+	private Seller instantiateSeller(ResultSet rs, Department dep) throws SQLException {
+		Seller sel = new Seller();
+		sel.setID(rs.getInt("ID"));
+		sel.setName(rs.getString("name"));
+		sel.setEmail(rs.getString("email"));
+		sel.setBaseSalary(rs.getDouble("baseSalary"));
+		sel.setBirthDate(rs.getDate("birthDate"));
+		sel.setDepartment(dep);
+		return sel;
+	}
+
+	private Department instantiateDepartment(ResultSet rs) throws SQLException {
+		Department dep = new Department();
+		dep.setID(rs.getInt("departmentID"));
+		dep.setName(rs.getString("depName"));		
+		return dep;
 	}
 
 	@Override
