@@ -3,12 +3,12 @@ package model.dao.implementation;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.Statement;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import db.DB;
 import db.DBException;
 import model.dao.SellerDAO;
@@ -24,9 +24,41 @@ public class SellerDAOJDBC implements SellerDAO{
 	}
 	
 	@Override
-	public void insert(Seller Seller) {
-		// TODO Auto-generated method stub
+	public void insert(Seller seller) {
+		PreparedStatement st = null;
+		String sql = "INSERT " + 
+                       "INTO seller (name, email, birthDate, baseSalary, departmentID) " + 
+                     "VALUES (?, ?, ?, ?, ?)";
 		
+		try {
+			st = conn.prepareStatement( sql, Statement.RETURN_GENERATED_KEYS );
+			st.setString(1, seller.getName());
+			st.setString(2, seller.getEmail());
+			st.setDate(3, new java.sql.Date(seller.getBirthDate().getTime()));
+			st.setDouble(4, seller.getBaseSalary());
+			st.setInt(5, seller.getDepartment().getID());
+			
+			int rowsAffected = st.executeUpdate();
+			
+			if (rowsAffected > 0) {
+				ResultSet rs = st.getGeneratedKeys();
+				if (rs.next()){
+					int id = rs.getInt(1);
+					seller.setID(id);
+				}
+				
+				DB.closeResultSet(rs);
+			}
+			else {
+				throw new DBException("Erro inesperado: Nenhum registro inserido!");
+			}
+		}	
+		catch (SQLException e) {
+			throw new DBException(e.getMessage());
+		}
+		finally {
+			DB.closeStatement(st);
+		}
 	}
 
 	@Override
@@ -97,8 +129,46 @@ public class SellerDAOJDBC implements SellerDAO{
 
 	@Override
 	public List<Seller> findAll() {
-		// TODO Auto-generated method stub
-		return null;
+		PreparedStatement st = null;
+		ResultSet rs = null;
+		
+		String sql = "SELECT s.*,"                   +
+				            "d.name as depName "     +
+				       "FROM seller s "              +
+				 "INNER JOIN department d "          +
+				         "ON s.departmentID = d.ID " +
+				   "ORDER BY name";
+		
+		try {
+			st = conn.prepareStatement( sql );
+			rs = st.executeQuery();
+			
+			List<Seller> list = new ArrayList<>();
+			Map<Integer, Department> map = new HashMap<>();
+			
+			// A primeira posição do result set não contém dados, por isso, utiliza-se o next,
+			// para saber se existe ao menos um registro.
+			while (rs.next()) {
+				Department dep = map.get(rs.getInt("departmentID"));
+				
+				if ( dep == null ) {
+					dep = instantiateDepartment(rs);
+					map.put(rs.getInt("departmentID"), dep);
+				}
+				
+				Seller sel = instantiateSeller(rs, dep); 
+				list.add(sel);
+			} 
+			
+			return list;
+		}	
+		catch (SQLException e) {
+			throw new DBException(e.getMessage());
+		}
+		finally {
+			DB.closeStatement(st);
+			DB.closeResultSet(rs);
+		}
 	}
 
 	@Override
@@ -146,5 +216,4 @@ public class SellerDAOJDBC implements SellerDAO{
 			DB.closeResultSet(rs);
 		}
 	}
-
 }
